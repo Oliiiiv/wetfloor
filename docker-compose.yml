@@ -1,0 +1,71 @@
+services:
+  # =========================================================================
+  # IB Gateway — community image that runs Interactive Brokers Gateway
+  # headlessly. Your IBKR credentials are passed via environment variables
+  # and stay inside this container; they are NEVER sent to the backend.
+  # =========================================================================
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway:stable
+    container_name: cautiouswetfloor-ib-gateway
+    restart: unless-stopped
+    environment:
+      TWS_USERID: ${IBKR_USERNAME}
+      TWS_PASSWORD: ${IBKR_PASSWORD}
+      TRADING_MODE: ${TRADING_MODE:-paper}
+      READ_ONLY_API: ${READ_ONLY_API:-yes}
+      TWS_ACCEPT_INCOMING: accept
+      TIME_ZONE: America/New_York
+      AUTO_RESTART_TIME: "23:55"
+      # 2FA-friendly settings (works with IBKR Mobile push notifications)
+      RELOGIN_AFTER_2FA_TIMEOUT: "yes"
+      TWOFA_TIMEOUT_ACTION: restart
+      EXISTING_SESSION_DETECTED_ACTION: primary
+    ports:
+      # Inside the container Gateway binds API to 127.0.0.1:4002 (paper) / 4001
+      # (live) — localhost-only. socat re-exposes them on 0.0.0.0:4004 / 4003
+      # so other containers (and the host) can actually connect.
+      - "4004:4004"   # Paper API (via socat)
+      - "4003:4003"   # Live API (via socat)
+      - "5900:5900"   # VNC for debugging Gateway's UI; password = TWS_PASSWORD
+    networks:
+      - cautiouswetfloor-net
+    healthcheck:
+      # The gnzsnz image doesn't ship `nc` or `netstat`. We grep /proc/net/tcp
+      # (always available on Linux) for any listening socket on the socat
+      # ports: 0FA4 = 4004 (paper), 0FA3 = 4003 (live). State 0A = LISTEN.
+      test:
+        - CMD-SHELL
+        - 'grep " 0A " /proc/net/tcp /proc/net/tcp6 2>/dev/null | grep -qE ":(0FA3|0FA4)"'
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # =========================================================================
+  # Backend POC — Phase 0 de-risk script. Connects to IB Gateway above and
+  # prints account data. Will be replaced by the full FastAPI backend in
+  # Phase 1.
+  # =========================================================================
+  backend-poc:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: cautiouswetfloor-backend-poc
+    depends_on:
+      ib-gateway:
+        # service_started: don't wait for healthcheck. The POC has its own
+        # retry loop (12 attempts × 5s backoff) which is more reliable than
+        # the upstream image's healthcheck behavior.
+        condition: service_started
+    environment:
+      IB_GATEWAY_HOST: ib-gateway
+      # 4004 = paper API via socat (the externally-accessible port for gnzsnz image)
+      IB_GATEWAY_PORT: ${IB_GATEWAY_PORT:-4004}
+      IB_CLIENT_ID: ${IB_CLIENT_ID:-1}
+    networks:
+      - cautiouswetfloor-net
+    command: python -m poc.connect_ibkr
+
+networks:
+  cautiouswetfloor-net:
+    driver: bridge

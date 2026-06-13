@@ -1,0 +1,4 @@
+# Phase 0 dependencies — minimal for de-risk POC.
+# Will be replaced by pyproject.toml + uv lockfile in Phase 1.
+ib-async>=1.0.1
+python-dotenv>=1.0.0

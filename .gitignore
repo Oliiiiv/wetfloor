@@ -1,0 +1,63 @@
+# Environments / secrets
+.env
+.env.local
+.env.*.local
+secrets/
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node.js
+node_modules/
+.next/
+.turbo/
+out/
+*.tsbuildinfo
+.pnpm-store/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IB Gateway artifacts
+IBController.log
+launcher.log
+
+# Local data / notebooks
+data/
+notebooks/.ipynb_checkpoints/
+
+# Excel local working files (templates committed under packages/excel-templates/)
+*.xlsx
+*.xlsm
+!packages/excel-templates/**/*.xlsx
+!packages/excel-templates/**/*.xlsm
+
+docs/
