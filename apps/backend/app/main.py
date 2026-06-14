@@ -14,7 +14,7 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import account, health
+from .api.routes import account, health, portfolio
 from .config import settings
 from .ibkr.client import IBKRClient
 
@@ -70,3 +70,4 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["health"])
 app.include_router(account.router, prefix="/api/account", tags=["account"])
+app.include_router(portfolio.router, prefix="/api/portfolio", tags=["portfolio"])

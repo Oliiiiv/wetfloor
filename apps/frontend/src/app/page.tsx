@@ -12,7 +12,7 @@ export default function HomePage() {
         <div className="flex justify-center gap-3">
           <Link
             href="/dashboard"
-            className="inline-flex items-center px-5 py-2 rounded-md bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-700 transition-colors"
+            className="inline-flex items-center px-5 py-2 rounded-md bg-brand text-white text-sm font-medium hover:bg-brand-600 transition-colors"
           >
             Open dashboard
           </Link>
@@ -20,7 +20,7 @@ export default function HomePage() {
             href="https://github.com/oliiiiv/wetfloor"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center px-5 py-2 rounded-md border border-neutral-200 text-sm font-medium hover:bg-neutral-50 transition-colors"
+            className="inline-flex items-center px-5 py-2 rounded-md border border-neutral-200 text-sm font-medium hover:border-brand-300 hover:text-brand transition-colors"
           >
             GitHub
           </a>

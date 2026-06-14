@@ -55,7 +55,9 @@ Credentials are stored encrypted in the macOS Keychain. **No plaintext on disk.*
 
 Open http://localhost:3000 once all three containers are up.
 
-### Mode flags
+### Flags
+
+Mode (mutually exclusive, optional):
 
 | Flag      | TRADING_MODE | Keychain entry | API port | Banner |
 |-----------|--------------|----------------|----------|--------|
@@ -63,7 +65,13 @@ Open http://localhost:3000 once all three containers are up.
 | `--paper` | paper        | `ibkr_paper`   | 4004     | green  |
 | `--live`  | live         | `ibkr_live`    | 4003     | red    |
 
-Live mode prints a red warning banner on startup. `READ_ONLY_API=yes` is the default safety net; for belt-and-suspenders also enable the read-only flag in IBKR Account Management → Settings → API.
+Dev mode (combinable with any mode flag):
+
+| Flag    | Effect |
+|---------|--------|
+| `--dev` | Backend: `uvicorn --reload` + source bind-mount. Frontend: `next dev` with HMR. Edits hot-reload in seconds. |
+
+Live mode prints a red warning banner. `READ_ONLY_API=yes` is the default safety net; for belt-and-suspenders also enable the read-only flag in IBKR Account Management → Settings → API.
 
 ### Common commands
 
@@ -73,9 +81,10 @@ Live mode prints a red warning banner on startup. `READ_ONLY_API=yes` is the def
 ./scripts/compose.sh logs ib-gateway -f          # follow Gateway logs (auth, 2FA, connection)
 ./scripts/compose.sh down                        # stop everything
 
-# Any subcommand accepts --live / --paper:
-./scripts/compose.sh --live logs backend -f
-./scripts/compose.sh --live down
+# Flags combine freely:
+./scripts/compose.sh --dev up                    # paper + hot reload
+./scripts/compose.sh --live --dev up             # live + hot reload
+./scripts/compose.sh --live logs backend -f      # live mode, follow backend logs
 
 # Phase 0 de-risk POC (still available as a regression harness):
 ./scripts/compose.sh up backend-poc

@@ -27,18 +27,20 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
   exit 1
 fi
 
-# --- Parse optional mode flag (first arg only) ---
+# --- Parse our own flags (anywhere in argv); leave the rest for docker compose ---
 MODE_OVERRIDE=""
-case "${1:-}" in
-  --live)
-    MODE_OVERRIDE="live"
-    shift
-    ;;
-  --paper)
-    MODE_OVERRIDE="paper"
-    shift
-    ;;
-esac
+DEV_MODE=""
+REMAINING=()
+for arg in "$@"; do
+  case "$arg" in
+    --live)  MODE_OVERRIDE="live"  ;;
+    --paper) MODE_OVERRIDE="paper" ;;
+    --dev)   DEV_MODE="1"          ;;
+    *)       REMAINING+=("$arg")   ;;
+  esac
+done
+# Replace argv with non-flag args so the rest of the script sees a clean $@.
+set -- "${REMAINING[@]+"${REMAINING[@]}"}"
 
 if [[ -n "$MODE_OVERRIDE" ]]; then
   export TRADING_MODE="$MODE_OVERRIDE"
@@ -89,13 +91,17 @@ export READ_ONLY_API="${READ_ONLY_API:-yes}"
 
 # --- Startup banner (visible mode indicator) ---
 # Only show on commands that "do something" (up/run/exec) to avoid noise on ps/logs.
+DEV_SUFFIX=""
+if [[ -n "$DEV_MODE" ]]; then
+  DEV_SUFFIX="  [DEV: hot-reload enabled]"
+fi
 case "${1:-}" in
   up|run|exec|start|restart)
     if [[ "$TRADING_MODE" == "live" ]]; then
       # ANSI red bold for live; loud on purpose.
       printf "\033[1;31m"
       echo "==============================================================="
-      echo "  LIVE TRADING MODE  --  real money at stake"
+      echo "  LIVE TRADING MODE  --  real money at stake${DEV_SUFFIX}"
       echo "  keychain : $IBKR_KEYCHAIN_ACCOUNT"
       echo "  port     : $IB_GATEWAY_PORT"
       echo "  read-only: $READ_ONLY_API   (also verify in IBKR Account Mgmt)"
@@ -103,10 +109,16 @@ case "${1:-}" in
       printf "\033[0m"
     else
       printf "\033[1;32m"
-      echo "Paper mode (keychain=$IBKR_KEYCHAIN_ACCOUNT port=$IB_GATEWAY_PORT)"
+      echo "Paper mode (keychain=$IBKR_KEYCHAIN_ACCOUNT port=$IB_GATEWAY_PORT)${DEV_SUFFIX}"
       printf "\033[0m"
     fi
     ;;
 esac
 
-exec docker compose "$@"
+# --- Compose file list (override stack when --dev is active) ---
+COMPOSE_FILES=(-f docker-compose.yml)
+if [[ -n "$DEV_MODE" ]]; then
+  COMPOSE_FILES+=(-f docker-compose.dev.yml)
+fi
+
+exec docker compose "${COMPOSE_FILES[@]}" "$@"

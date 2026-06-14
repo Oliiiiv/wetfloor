@@ -1,0 +1,50 @@
+# =============================================================================
+# Dev override — overlays docker-compose.yml. Activate with `--dev`:
+#
+#     ./scripts/compose.sh --dev up
+#     ./scripts/compose.sh --live --dev up   # combinable with mode flag
+#
+# Effects:
+#   - Backend source is bind-mounted; uvicorn --reload picks up changes in <1s.
+#   - Frontend runs `next dev` (HMR) instead of the standalone build.
+#
+# This file is NEVER applied unless --dev is passed, so production behavior is
+# unaffected.
+# =============================================================================
+services:
+  backend:
+    volumes:
+      # Bind-mount source for hot reload. Edits to apps/backend/app are
+      # detected by uvicorn within seconds.
+      - ./apps/backend/app:/app/app
+      - ./apps/backend/poc:/app/poc
+    # --reload watches for file changes. --reload-dir lets us scope what's
+    # watched (faster than the default).
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+    environment:
+      LOG_LEVEL: DEBUG
+
+  frontend:
+    build:
+      # Build the dev stage instead of the production runner. Carries
+      # node_modules but expects source to come from the volume mount.
+      target: dev
+    volumes:
+      # Source bind-mount for hot reload.
+      - ./apps/frontend:/app
+      # Anonymous volume preserves the container's node_modules so the host
+      # bind-mount above doesn't shadow it (host's node_modules may be
+      # missing or built for a different platform).
+      - /app/node_modules
+      # Same idea for .next: keep the dev server's build cache in the container.
+      - /app/.next
+    environment:
+      NODE_ENV: development
+      # Polling watcher — required on Docker for Mac for HMR to see file edits.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"

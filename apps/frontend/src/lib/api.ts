@@ -54,3 +54,43 @@ export async function fetchHealth(): Promise<HealthResponse> {
   }
   return res.json();
 }
+
+// --- Portfolio snapshot (Smart Homepage) -------------------------------
+
+export interface Holding {
+  symbol: string;
+  sec_type: string;
+  exchange: string | null;
+  currency: string;
+  quantity: number;
+  avg_cost: number;
+  market_price: number | null;
+  market_value: number | null;
+  unrealized_pnl: number | null;
+  unrealized_pnl_pct: number | null;
+  realized_pnl: number | null;
+  allocation_pct: number | null;
+}
+
+export interface PortfolioSnapshot {
+  as_of: string;
+  base_currency: string;
+  account: string | null;
+  net_liquidation: number | null;
+  total_market_value: number | null;
+  total_unrealized_pnl: number | null;
+  holdings: Holding[];
+}
+
+export async function fetchPortfolioSnapshot(): Promise<PortfolioSnapshot> {
+  const res = await fetch(`${BACKEND_URL}/api/portfolio/snapshot`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(
+      `Backend returned ${res.status} ${res.statusText}: ${body || "(empty)"}`
+    );
+  }
+  return res.json();
+}
