@@ -42,26 +42,71 @@ services:
       start_period: 30s
 
   # =========================================================================
-  # Backend POC — Phase 0 de-risk script. Connects to IB Gateway above and
-  # prints account data. Will be replaced by the full FastAPI backend in
-  # Phase 1.
+  # Backend — FastAPI service. Holds a lazy-connected ib_async.IB singleton
+  # and serves the dashboard API. clientId=2 to avoid clashing with the POC
+  # (which uses clientId=1).
+  # =========================================================================
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: cautiouswetfloor-backend
+    depends_on:
+      ib-gateway:
+        condition: service_started
+    environment:
+      IB_GATEWAY_HOST: ib-gateway
+      IB_GATEWAY_PORT: ${IB_GATEWAY_PORT:-4004}
+      IB_CLIENT_ID: 2
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    networks:
+      - cautiouswetfloor-net
+
+  # =========================================================================
+  # Frontend — Next.js (App Router). Server-renders the dashboard by fetching
+  # from the backend over the docker network.
+  # =========================================================================
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: cautiouswetfloor-frontend
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks:
+      - cautiouswetfloor-net
+
+  # =========================================================================
+  # Backend POC — Phase 0 de-risk script, kept as a regression harness.
+  # Overrides the Dockerfile's default CMD (which now runs uvicorn) to run
+  # the POC script. Uses clientId=1 (backend uses 2 to avoid clashing).
+  #
+  # Run on demand:
+  #     ./scripts/compose.sh up backend-poc
+  #
+  # Not started by default; the `profiles: [poc]` opt-out gate keeps it out
+  # of `docker compose up`.
   # =========================================================================
   backend-poc:
+    profiles: [poc]
     build:
       context: ./apps/backend
       dockerfile: Dockerfile
     container_name: cautiouswetfloor-backend-poc
     depends_on:
       ib-gateway:
-        # service_started: don't wait for healthcheck. The POC has its own
-        # retry loop (12 attempts × 5s backoff) which is more reliable than
-        # the upstream image's healthcheck behavior.
         condition: service_started
     environment:
       IB_GATEWAY_HOST: ib-gateway
-      # 4004 = paper API via socat (the externally-accessible port for gnzsnz image)
       IB_GATEWAY_PORT: ${IB_GATEWAY_PORT:-4004}
-      IB_CLIENT_ID: ${IB_CLIENT_ID:-1}
+      IB_CLIENT_ID: 1
     networks:
       - cautiouswetfloor-net
     command: python -m poc.connect_ibkr
